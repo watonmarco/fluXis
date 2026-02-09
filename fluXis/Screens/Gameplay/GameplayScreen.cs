@@ -176,6 +176,7 @@ public partial class GameplayScreen : FluXisScreen, IKeyBindingHandler<FluXisGlo
     private GameplayClockContainer clockContainer;
     private Container hud { get; set; }
     private ScoreSubmissionOverlay scoreSubmissionOverlay;
+    private Dictionary<ShaderLayer, ShaderStackContainer> shaderStacks;
 
     public RulesetContainer RulesetContainer { get; private set; }
     public PlayfieldManager PlayfieldManager { get; private set; }
@@ -243,8 +244,12 @@ public partial class GameplayScreen : FluXisScreen, IKeyBindingHandler<FluXisGlo
 
         dependencies.CacheAs<ICustomColorProvider>(colors);
 
-        var shaders = buildShaders();
-        var transforms = shaders.TransformHandlers.ToList();
+        Hitsounding = new Hitsounding(RealmMap.MapSet, Map.HitSoundFades, new Bindable<double>(Rate));
+        dependencies.CacheAs(Hitsounding);
+        LoadComponent(Hitsounding);
+
+        shaderStacks = buildShaders();
+        var transforms = shaderStacks.Values.SelectMany(s => s.TransformHandlers).ToList();
 
         clockContainer = new GameplayClockContainer(tracks, RealmMap, Map, new Drawable[]
         {
@@ -272,6 +277,75 @@ public partial class GameplayScreen : FluXisScreen, IKeyBindingHandler<FluXisGlo
 
         var camera = new CameraContainer(MapEvents.Where(x => x is ICameraEvent).Cast<ICameraEvent>().ToList());
 
+        shaderStacks[ShaderLayer.Background].AddContent(new[]
+        {
+            new Container
+            {
+                RelativeSizeAxes = Axes.Both,
+                Colour = ColourInfo.GradientHorizontal(Color4.White, Color4.Black).Interpolate(new Vector2(BackgroundDim, 0)),
+                Children = new Drawable[]
+                {
+                    background = new GlobalBackground
+                    {
+                        DefaultMap = RealmMap,
+                        InitialBlur = BackgroundBlur
+                    },
+                    backgroundVideo = new BackgroundVideo
+                    {
+                        Clock = GameplayClock
+                    },
+                    new DrawableStoryboardLayer(GameplayClock, storyboard, StoryboardLayer.Background),
+                }
+            }
+        });
+
+        shaderStacks[ShaderLayer.Playfield].AddContent(new[]
+        {
+            clockContainer
+        });
+
+        var hudContainer = new Container
+        {
+            RelativeSizeAxes = Axes.Both,
+            Alpha = DisplayHUD ? 1 : 0
+        };
+        hud = hudContainer;
+
+        shaderStacks[ShaderLayer.Screen].AddContent(new[]
+        {
+            camera.WithChildren(new Drawable[]
+            {
+                new DrawSizePreservingFillContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    TargetDrawSize = new Vector2(1920, 1080),
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Children = new Drawable[]
+                    {
+                        shaderStacks[ShaderLayer.Background],
+                        new ComboBurst(RulesetContainer),
+                        shaderStacks[ShaderLayer.Playfield],
+                        new DrawableStoryboardLayer(GameplayClock, storyboard, StoryboardLayer.Foreground)
+                    }
+                },
+                hudContainer,
+                new DrawSizePreservingFillContainer
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    TargetDrawSize = new Vector2(1920, 1080),
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Child = new DrawableStoryboardLayer(GameplayClock, storyboard, StoryboardLayer.Overlay)
+                }
+            }),
+            CreateTextOverlay(),
+            new DangerHealthOverlay(),
+            new PulseEffect(MapEvents.PulseEvents) { Clock = GameplayClock },
+            new FlashOverlay(MapEvents.FlashEvents.Where(e => !e.InBackground).ToList()) { Clock = GameplayClock },
+            new SkipOverlay(),
+        });
+
         InternalChildren = new Drawable[]
         {
             keybindContainer = new GameplayKeybindContainer(realm, RealmMap.KeyCount, Map.IsDual)
@@ -282,69 +356,8 @@ public partial class GameplayScreen : FluXisScreen, IKeyBindingHandler<FluXisGlo
                 {
                     camera.CreateProxyDrawable().With(x => x.Clock = GameplayClock),
                     Samples,
-                    dependencies.CacheAsAndReturn(Hitsounding = new Hitsounding(RealmMap.MapSet, Map.HitSoundFades, GameplayClock.RateBindable) { Clock = GameplayClock }),
-                    shaders.AddContent(new Drawable[]
-                    {
-                        new AspectRatioContainer(Map.Force16By9)
-                        {
-                            Children = new Drawable[]
-                            {
-                                camera.WithChildren(new Drawable[]
-                                {
-                                    new DrawSizePreservingFillContainer
-                                    {
-                                        RelativeSizeAxes = Axes.Both,
-                                        TargetDrawSize = new Vector2(1920, 1080),
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                        Children = new Drawable[]
-                                        {
-                                            new Container
-                                            {
-                                                RelativeSizeAxes = Axes.Both,
-                                                Colour = ColourInfo.GradientHorizontal(Color4.White, Color4.Black).Interpolate(new Vector2(BackgroundDim, 0)),
-                                                Children = new Drawable[]
-                                                {
-                                                    background = new GlobalBackground
-                                                    {
-                                                        DefaultMap = RealmMap,
-                                                        InitialBlur = BackgroundBlur
-                                                    },
-                                                    backgroundVideo = new BackgroundVideo
-                                                    {
-                                                        Clock = GameplayClock
-                                                    },
-                                                    new DrawableStoryboardLayer(GameplayClock, storyboard, StoryboardLayer.Background),
-                                                }
-                                            },
-                                            new ComboBurst(RulesetContainer),
-                                            clockContainer,
-                                            new DrawableStoryboardLayer(GameplayClock, storyboard, StoryboardLayer.Foreground)
-                                        }
-                                    },
-                                    hud = new Container
-                                    {
-                                        RelativeSizeAxes = Axes.Both,
-                                        Alpha = DisplayHUD ? 1 : 0,
-                                        Child = new GameplayHUD(RulesetContainer)
-                                    },
-                                    new DrawSizePreservingFillContainer
-                                    {
-                                        RelativeSizeAxes = Axes.Both,
-                                        TargetDrawSize = new Vector2(1920, 1080),
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                        Child = new DrawableStoryboardLayer(GameplayClock, storyboard, StoryboardLayer.Overlay)
-                                    }
-                                }),
-                                new PulseEffect(MapEvents.PulseEvents) { Clock = GameplayClock },
-                                new FlashOverlay(MapEvents.FlashEvents.Where(e => !e.InBackground).ToList()) { Clock = GameplayClock },
-                            }
-                        }
-                    }),
-                    CreateTextOverlay(),
-                    new DangerHealthOverlay(),
-                    new SkipOverlay(),
+                    Hitsounding.With(x => x.Clock = GameplayClock),
+                    shaderStacks[ShaderLayer.Screen],
                     failMenu = new FailMenu(),
                     fcOverlay = new FullComboOverlay(),
                     quickActionOverlay = new QuickActionOverlay(),
@@ -364,49 +377,61 @@ public partial class GameplayScreen : FluXisScreen, IKeyBindingHandler<FluXisGlo
         RulesetContainer.Input.OnRelease += replayRecorder.ReleaseKey;
     }
 
-    private ShaderStackContainer buildShaders()
+    private Dictionary<ShaderLayer, ShaderStackContainer> buildShaders()
     {
-        var stack = new ShaderStackContainer();
+        var stacksByLayer = new Dictionary<ShaderLayer, ShaderStackContainer>();
         var shaders = MapEvents.ShaderEvents;
-        var shaderTypes = shaders.Select(e => e.Type).Distinct().ToList();
-
-        LoadComponent(stack);
-
-        foreach (var shaderType in shaderTypes)
+        
+        foreach (ShaderLayer layer in Enum.GetValues(typeof(ShaderLayer)))
         {
-            ShaderContainer shader = shaderType switch
-            {
-                ShaderType.Chromatic => new ChromaticContainer(),
-                ShaderType.Greyscale => new GreyscaleContainer(),
-                ShaderType.Invert => new InvertContainer(),
-                ShaderType.Bloom => new BloomContainer(),
-                ShaderType.Mosaic => new MosaicContainer(),
-                ShaderType.Noise => new NoiseContainer(),
-                ShaderType.Vignette => new VignetteContainer(),
-                ShaderType.Retro => new RetroContainer(),
-                ShaderType.HueShift => new HueShiftContainer(),
-                ShaderType.Glitch => new GlitchContainer(),
-                ShaderType.SplitScreen => new SplitScreenContainer(),
-                ShaderType.FishEye => new FishEyeContainer(),
-                ShaderType.Reflections => new ReflectionsContainer(),
-                _ => null
-            };
-
-            if (shader == null)
-            {
-                Logger.Log($"Shader '{shaderType}' not found", LoggingTarget.Runtime, LogLevel.Error);
-                continue;
-            }
-
-            shader.RelativeSizeAxes = Axes.Both;
-            var handler = stack.AddShader(shader);
-            LoadComponent(handler);
-
-            shaders.Where(x => x.Type == shaderType)
-                   .ForEach(s => s.Apply(handler));
+            var stack = new ShaderStackContainer();
+            LoadComponent(stack);
+            stacksByLayer[layer] = stack;
         }
-
-        return stack;
+        
+        var shadersByLayer = shaders.GroupBy(s => s.Layer);
+        
+        foreach (var layerGroup in shadersByLayer)
+        {
+            var stack = stacksByLayer[layerGroup.Key];
+            var shaderTypes = layerGroup.Select(e => e.Type).Distinct().ToList();
+            
+            foreach (var shaderType in shaderTypes)
+            {
+                ShaderContainer shader = shaderType switch
+                {
+                    ShaderType.Chromatic => new ChromaticContainer(),
+                    ShaderType.Greyscale => new GreyscaleContainer(),
+                    ShaderType.Invert => new InvertContainer(),
+                    ShaderType.Bloom => new BloomContainer(),
+                    ShaderType.Mosaic => new MosaicContainer(),
+                    ShaderType.Noise => new NoiseContainer(),
+                    ShaderType.Vignette => new VignetteContainer(),
+                    ShaderType.Retro => new RetroContainer(),
+                    ShaderType.HueShift => new HueShiftContainer(),
+                    ShaderType.Glitch => new GlitchContainer(),
+                    ShaderType.SplitScreen => new SplitScreenContainer(),
+                    ShaderType.FishEye => new FishEyeContainer(),
+                    ShaderType.Reflections => new ReflectionsContainer(),
+                    _ => null
+                };
+                
+                if (shader == null)
+                {
+                    Logger.Log($"Shader '{shaderType}' not found", LoggingTarget.Runtime, LogLevel.Error);
+                    continue;
+                }
+                
+                shader.RelativeSizeAxes = Axes.Both;
+                var handler = stack.AddShader(shader);
+                LoadComponent(handler);
+                
+                layerGroup.Where(x => x.Type == shaderType)
+                        .ForEach(s => s.Apply(handler));
+            }
+        }
+        
+        return stacksByLayer;
     }
 
     private void showNotifcations()
@@ -424,6 +449,9 @@ public partial class GameplayScreen : FluXisScreen, IKeyBindingHandler<FluXisGlo
     protected override void LoadComplete()
     {
         base.LoadComplete();
+
+        if (DisplayHUD)
+            hud.Add(new GameplayHUD(RulesetContainer));
 
         background.ParallaxStrength = 0;
 

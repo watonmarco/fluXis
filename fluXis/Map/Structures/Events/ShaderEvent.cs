@@ -30,6 +30,9 @@ public class ShaderEvent : IMapEvent, IHasDuration, IHasEasing
     [JsonIgnore]
     public ShaderType Type { get; set; } = ShaderType.Bloom;
 
+    [JsonProperty("layer")]
+    public ShaderLayer Layer { get; set; } = ShaderLayer.Screen;
+
     [JsonProperty("duration")]
     public double Duration { get; set; }
 
@@ -138,4 +141,11 @@ public enum ShaderType
     [ShaderStrength(1)]
     [ShaderStrength(2, ParamName = "Scale", Tooltip = "Scale factor of each consecutive reflection.")]
     Reflections
+}
+
+public enum ShaderLayer
+{
+    Screen = 0,
+    Background = 1,
+    Playfield = 2
 }

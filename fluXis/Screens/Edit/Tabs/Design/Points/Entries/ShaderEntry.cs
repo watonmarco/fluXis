@@ -31,12 +31,21 @@ public partial class ShaderEntry : PointListEntry
 
     protected override Drawable[] CreateValueContent()
     {
+        var layerName = shader.Layer switch
+        {
+            ShaderLayer.Screen => "SC",
+            ShaderLayer.Background => "BG",
+            ShaderLayer.Playfield => "PF",
+            _ => "?"
+        };
+        
         var text = $"{shader.ShaderName} {(int)shader.Duration}ms (";
 
         if (shader.UseStartParams)
             text += $"{shader.StartParameters.Strength} > ";
 
         text += $"{shader.EndParameters.Strength})";
+        text += $" [{layerName}]"; // i guess it's ok if i put this here
 
         return new Drawable[]
         {
@@ -86,6 +95,18 @@ public partial class ShaderEntry : PointListEntry
 
                     Map.Update(shader);
                     OpenSettings();
+                }
+            },
+            new PointSettingsDropdown<ShaderLayer>
+            {
+                Text = "Layer",
+                TooltipText = "The layer to apply the shader to.",
+                CurrentValue = shader.Layer,
+                Items = Enum.GetValues<ShaderLayer>().ToList(),
+                OnValueChanged = value =>
+                {
+                    shader.Layer = value;
+                    Map.Update(shader);
                 }
             },
             startValToggle

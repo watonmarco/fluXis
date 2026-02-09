@@ -24,6 +24,9 @@ public partial class CameraContainer : Container
     [BackgroundDependencyLoader]
     private void load()
     {
+        if (proxy == null)
+            proxy = new CameraProxy();
+            
         Refresh(events);
     }
 
