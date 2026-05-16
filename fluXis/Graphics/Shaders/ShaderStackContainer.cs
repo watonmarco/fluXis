@@ -126,6 +126,9 @@ public partial class ShaderStackContainer : CompositeDrawable, IBufferedDrawable
         ShaderType.SplitScreen => new SplitScreenShaderStep(),
         ShaderType.FishEye => new FishEyeShaderStep(),
         ShaderType.Reflections => new ReflectionsShaderStep(),
+        ShaderType.FractalNoise => new FractalNoiseShaderStep(),
+        ShaderType.FakePixelSorting => new FakePixelSortingShaderStep(),
+        ShaderType.AsciiArt => new AsciiArtShaderStep(),
         _ => null
     };
 
