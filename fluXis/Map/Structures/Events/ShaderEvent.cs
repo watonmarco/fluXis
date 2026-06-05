@@ -142,6 +142,10 @@ public enum ShaderType
     [ShaderStrength(2, ParamName = "Scale", Tooltip = "Scale factor of each consecutive reflection.")]
     Reflections,
 
+    [ShaderStrength(ParamName = "Amount")]
+    [ShaderStrength(2, ParamName = "Speed")]
+    Glitch2,
+
     [ShaderStrength(1, Max = 1f, Step = 0.01f, ParamName = "Strength", Tooltip = "The strength of the fractal noise effect.")]
     [ShaderStrength(2, Max = 1f, Step = 0.01f, ParamName = "Speed", Tooltip = "The speed of the fractal noise animation.")]
     FractalNoise,
@@ -152,4 +156,5 @@ public enum ShaderType
     [ShaderStrength(1, Max = 1f, Step = 0.01f, ParamName = "Strength", Tooltip = "The strength of the ascii art effect.")]
     [ShaderStrength(2, Max = 1f, Step = 0.01f, ParamName = "Cell Size", Tooltip = "The size of the ascii art cells.")]
     AsciiArt
+    
 }

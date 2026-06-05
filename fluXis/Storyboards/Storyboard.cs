@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using fluXis.Map.Structures.Bases;
 using fluXis.Screens.Edit;
-using fluXis.Utils;
+using Midori.Utils;
 using Newtonsoft.Json;
 using osuTK;
 
@@ -96,6 +96,9 @@ public class Storyboard : EditorMap.IChangeNotifier
         x.StartTime += offset;
         x.EndTime += offset;
     });
+
+    public List<StoryboardElement> GetScriptElements(string s) =>
+        Elements.FindAll(e => e.Type == StoryboardElementType.Script && e.GetParameter("path", "") == s);
 
     public bool Matches(Type type) => typeof(StoryboardElement) == type;
 

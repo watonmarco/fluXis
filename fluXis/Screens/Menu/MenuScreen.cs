@@ -10,16 +10,20 @@ using fluXis.Graphics.Sprites.Outline;
 using fluXis.Graphics.Sprites.Text;
 using fluXis.Graphics.UserInterface.Panel;
 using fluXis.Graphics.UserInterface.Panel.Presets;
+using fluXis.Graphics.UserInterface.Panel.Types;
 using fluXis.Graphics.UserInterface.Text;
 using fluXis.Localization;
 using fluXis.Map;
 using fluXis.Online.API.Models.Users;
 using fluXis.Online.Fluxel;
+using fluXis.Online.Spectator;
 using fluXis.Overlay.Browse;
 using fluXis.Overlay.Network;
 using fluXis.Overlay.Settings;
 using fluXis.Overlay.Toolbar;
 using fluXis.Screens.Edit;
+using fluXis.Screens.Gameplay;
+using fluXis.Screens.Gameplay.Spectator;
 using fluXis.Screens.Menu.UI;
 using fluXis.Screens.Menu.UI.Buttons;
 using fluXis.Screens.Menu.UI.NowPlaying;
@@ -29,7 +33,9 @@ using fluXis.Screens.Menu.UI.Visualizer;
 using fluXis.Screens.Multiplayer;
 using fluXis.Screens.Select;
 using fluXis.UI;
+using fluXis.Utils;
 using fluXis.Utils.Extensions;
+using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Bindables;
@@ -84,6 +90,10 @@ public partial class MenuScreen : FluXisScreen
 
     [Resolved]
     private PanelContainer panels { get; set; }
+
+    [CanBeNull]
+    [Resolved(CanBeNull = true)]
+    private SpectatorClient spectator { get; set; }
 
     private FluXisTextFlow splashText;
     private FluXisSpriteText pressAnyKeyText;
@@ -199,7 +209,7 @@ public partial class MenuScreen : FluXisScreen
                                         playButton = new MenuImageButton
                                         {
                                             Text = LocalizationStrings.MainMenu.PlayText,
-                                            Icon = FontAwesome6.Solid.Play,
+                                            Icon = Phosphor.Bold.Play,
                                             Keys = new[] { Key.Enter, Key.P },
                                             GamepadButton = JoystickButton.Button2, // A
                                             Action = continueToPlay,
@@ -209,7 +219,7 @@ public partial class MenuScreen : FluXisScreen
                                         {
                                             Text = LocalizationStrings.MainMenu.MultiplayerText,
                                             Description = LocalizationStrings.MainMenu.MultiplayerDescription,
-                                            Icon = FontAwesome6.Solid.Users,
+                                            Icon = Phosphor.Bold.UsersThree,
                                             Keys = new[] { Key.M },
                                             GamepadButton = JoystickButton.Button3, // B
                                             Action = continueToMultiplayer,
@@ -226,7 +236,7 @@ public partial class MenuScreen : FluXisScreen
                                         {
                                             Text = LocalizationStrings.MainMenu.EditText,
                                             Description = LocalizationStrings.MainMenu.EditDescription,
-                                            Icon = FontAwesome6.Solid.PenRuler,
+                                            Icon = Phosphor.Bold.PencilRuler,
                                             Keys = new[] { Key.E },
                                             Action = () => this.Push(new EditorLoader()),
                                             DefaultSprite = new Sprite
@@ -242,7 +252,7 @@ public partial class MenuScreen : FluXisScreen
                                         {
                                             Text = LocalizationStrings.MainMenu.DashboardText,
                                             Description = LocalizationStrings.MainMenu.DashboardDescription,
-                                            Icon = FontAwesome6.Solid.EarthAmericas,
+                                            Icon = Phosphor.Bold.GlobeHemisphereWest,
                                             Keys = new[] { Key.D },
                                             GamepadButton = JoystickButton.Button1, // X
                                             Action = openDashboard,
@@ -254,7 +264,7 @@ public partial class MenuScreen : FluXisScreen
                                         {
                                             Text = LocalizationStrings.MainMenu.BrowseText,
                                             Description = LocalizationStrings.MainMenu.BrowseDescription,
-                                            Icon = FontAwesome6.Solid.ArrowDownToLine,
+                                            Icon = Phosphor.Bold.ArrowLineDown,
                                             GamepadButton = JoystickButton.Button4, // Y
                                             Keys = new[] { Key.B },
                                             Action = continueToBrowse,
@@ -265,7 +275,7 @@ public partial class MenuScreen : FluXisScreen
                                         },
                                         new MenuExitButton
                                         {
-                                            Icon = FontAwesome6.Solid.DoorOpen,
+                                            Icon = Phosphor.Bold.DoorOpen,
                                             Action = Game.Exit,
                                             GamepadButton = JoystickButton.Button9, // Back
                                             Size = new Vector2(100, 80),
@@ -327,19 +337,19 @@ public partial class MenuScreen : FluXisScreen
                         {
                             new MenuLinkButton
                             {
-                                Icon = FontAwesome6.Brands.Discord,
+                                Icon = Phosphor.Bold.DiscordLogo,
                                 Action = () => Game.OpenLink("https://discord.gg/29hMftpNq9"),
                                 Text = "Discord"
                             },
                             new MenuLinkButton
                             {
-                                Icon = FontAwesome6.Brands.GitHub,
+                                Icon = Phosphor.Bold.GithubLogo,
                                 Action = () => Game.OpenLink("https://github.com/InventiveRhythm/fluXis"),
                                 Text = "GitHub"
                             },
                             new MenuLinkButton
                             {
-                                Icon = FontAwesome6.Solid.EarthAmericas,
+                                Icon = Phosphor.Bold.GlobeHemisphereWest,
                                 Action = () => Game.OpenLink(api.Endpoint.WebsiteRootUrl),
                                 Text = "Website"
                             }
@@ -459,6 +469,29 @@ public partial class MenuScreen : FluXisScreen
                 panels.Content ??= new ConfirmExitPanel();
                 return true;
 
+            case Key.C when spectator != null && DebugUtils.IsDebugBuild: // TODO: move this to a proper screen
+                var data = new SpectatorRequest { ID = "1" };
+                panels.Add(new FormPanel<SpectatorRequest>(Phosphor.Bold.Monitor, "Start spectating", data, (_, o) =>
+                {
+                    spectator.StartWatching(long.Parse(o.ID)).Wait();
+                    spectator.OnStartedPlaying += (u, state) =>
+                    {
+                        var map = maps.GetMapFromOnlineID(state.MapID!.Value);
+
+                        if (map is null)
+                        {
+                            // TODO: download map
+                            panels.Add(new SingleButtonPanel(Phosphor.Bold.Warning, "The player you are spectating is playing a map you dont have downloaded.", ""));
+                            return;
+                        }
+
+                        var mods = state.Mods.Select(ModUtils.GetFromAcronym).Where(x => x != null).ToList();
+                        this.Push(new GameplayLoader(map, mods, () => new SpectatorGameplay(map, mods, spectator.Replays[u])));
+                    };
+                    return true;
+                }));
+                return true;
+
             case Key.BackSpace when DebugUtils.IsDebugBuild:
                 revertStartAnimation();
                 return true;
@@ -466,6 +499,11 @@ public partial class MenuScreen : FluXisScreen
             default:
                 return CanPlayAnimation();
         }
+    }
+
+    private class SpectatorRequest
+    {
+        public string ID { get; set; }
     }
 
     protected override bool OnMouseDown(MouseDownEvent e) => CanPlayAnimation();
@@ -519,13 +557,15 @@ public partial class MenuScreen : FluXisScreen
 
     public void PreEnter()
     {
-        if (config.Get<bool>(FluXisSetting.IntroTheme))
+        var theme = config.Get<MapStore.BuiltinMap>(FluXisSetting.IntroTheme);
+
+        if (theme != MapStore.BuiltinMap.None)
         {
             maps.CurrentMap = maps.CreateBuiltinMap(Game.CurrentSeason switch
             {
                 Season.Halloween => MapStore.BuiltinMap.Spoophouse,
                 Season.Christmas => MapStore.BuiltinMap.Christmashouse,
-                _ => MapStore.BuiltinMap.Roundhouse
+                _ => theme
             }).LowestDifficulty;
             clock.Seek(0);
         }

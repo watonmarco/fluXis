@@ -12,6 +12,7 @@ using fluXis.Overlay.Notifications;
 using fluXis.Overlay.Notifications.Tasks;
 using fluXis.Overlay.Settings.UI;
 using fluXis.Utils;
+using Midori.Utils.Extensions;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Sprites;
@@ -23,7 +24,7 @@ namespace fluXis.Overlay.Settings.Sections.Advanced;
 public partial class AdvancedMapsSection : SettingsSubSection
 {
     public override LocalisableString Title => strings.Maps;
-    public override IconUsage Icon => FontAwesome6.Solid.Map;
+    public override IconUsage Icon => Phosphor.Bold.MapTrifold;
 
     private SettingsAdvancedStrings strings => LocalizationStrings.Settings.Advanced;
 
@@ -88,7 +89,7 @@ public partial class AdvancedMapsSection : SettingsSubSection
 
             var bytes = dir.GetFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
 
-            var label = $"{strings.ClearVisualizationCache} ({StringUtils.FormatBytes(bytes)})";
+            var label = $"{strings.ClearVisualizationCache} ({bytes.FormatBytes()})";
             Schedule(() => clearFFTOption.SetLabel(label));
         });
     }
@@ -169,7 +170,7 @@ public partial class AdvancedMapsSection : SettingsSubSection
             }
         });
 
-        notifications.SendSmallText($"Removed {count} scores.", FontAwesome6.Solid.Check);
+        notifications.SendSmallText($"Removed {count} scores.", Phosphor.Bold.Check);
     }
 
     private void clearFFTCache()
