@@ -15,7 +15,7 @@ public class MirrorMod : IMod, IApplicableToMap
     public ModType Type => ModType.Misc;
     public float ScoreMultiplier => 1f;
     public bool Rankable => true;
-    public Type[] IncompatibleMods => Array.Empty<Type>();
+    public Type[] IncompatibleMods => new[] { typeof(RandomMod) };
 
     public void Apply(MapInfo map)
     {

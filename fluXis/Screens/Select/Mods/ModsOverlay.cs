@@ -235,7 +235,8 @@ public partial class ModsOverlay : VisibilityContainer
                                                                 new NoLnMod(),
                                                                 new NoMineMod(),
                                                                 new NoEventMod(),
-                                                                new MirrorMod()
+                                                                new MirrorMod(),
+                                                                new RandomMod(),
                                                             })
                                                         }
                                                     },
