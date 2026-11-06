@@ -130,6 +130,7 @@ public partial class ShaderStackContainer : Container, IBufferedDrawable
         ShaderType.FractalNoise => new FractalNoiseShaderStep(),
         ShaderType.FakePixelSorting => new FakePixelSortingShaderStep(),
         ShaderType.AsciiArt => new AsciiArtShaderStep(),
+        ShaderType.AsciiArt2 => new AsciiArt2ShaderStep(),
         _ => null
     };
 

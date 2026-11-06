@@ -155,6 +155,10 @@ public enum ShaderType
 
     [ShaderStrength(1, Max = 1f, Step = 0.01f, ParamName = "Strength", Tooltip = "The strength of the ascii art effect.")]
     [ShaderStrength(2, Max = 1f, Step = 0.01f, ParamName = "Cell Size", Tooltip = "The size of the ascii art cells.")]
-    AsciiArt
+    AsciiArt,
+
+    [ShaderStrength(1, Max = 1f, Step = 0.01f, ParamName = "Strength", Tooltip = "The strength of the ascii art effect.")]
+    [ShaderStrength(2, Max = 1f, Step = 0.01f, ParamName = "Cell Size", Tooltip = "The size of the ascii art cells.")]
+    AsciiArt2
     
 }
